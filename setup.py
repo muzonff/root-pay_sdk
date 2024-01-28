@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-requirements = ["httpx"]
+requirements = ["httpx>=0.26.0"]
 print(find_packages())
 setup(
     name="rootpay_sdk",
@@ -9,7 +9,7 @@ setup(
     author_email="touka.touka@icloud.com",
     description="A package to interact with root-pay.app API",
     long_description="A package to interact with root-pay (update later)",
-    url="https://github.com/your_package/homepage/",
+    url="https://github.com/muzonff/root-pay_sdk/",
     packages=find_packages(),
     install_requires=requirements,
     classifiers=[
