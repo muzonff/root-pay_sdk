@@ -38,7 +38,7 @@ class Payment:
 
         return False
 
-        async def full_info(self) -> dict:
+    async def full_info(self) -> dict:
         """
         :return: полную информацию о платеже в формате:         {
             "amount": "1500",
