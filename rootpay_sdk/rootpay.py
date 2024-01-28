@@ -38,6 +38,31 @@ class Payment:
 
         return False
 
+        async def full_info(self) -> dict:
+        """
+        :return: полную информацию о платеже в формате:         {
+            "amount": "1500",
+            "created_at": "2023-02-28 19:36",
+            "expired_at": "2023-02-28 19:57",
+            "method": "CARD",
+            "session_id": "puKHMyu4XxF5",
+            "status": "paid",
+            "total_amount": "1506.12"
+        }
+        """
+        async with httpx.AsyncClient() as client:
+            result = await client.post(self.payment_url, data=self.pay_data)
+        if result.status_code != 200:
+            raise ConnectError(result.text)
+        result = result.json()
+
+        if 'error' in result:
+            raise ChechPayExcept(result['error'])
+
+        elif len(result['payments']) == 0:
+            raise Exception("Payment not exist")
+        return result['payments'][0]
+        
     async def get_amount(self) -> float:
         """
 
