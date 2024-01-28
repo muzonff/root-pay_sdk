@@ -1,3 +1,8 @@
+__Аннотация__
+Есть у меня друг который постоянно заказывает у меня ботов, и в один из дней он попросил добавить платежку root-pay.app , поискал либы и понял что их тупо нет. Сейчас руки дошли сделать полноценную асинхронную библиотеку в которой есть абсолютно все методы из api. 
+
+
+
 # Класс RootPayApi()
 
 Класс `RootPayApi` предоставляет методы для работы с API сервиса RootPay.
@@ -18,7 +23,10 @@ api = RootPayApi(api_key: str)
 active_methods = await api.get_active_methods()
 ```
 
-Возвращает список активных методов получения платежей.
+Возвращает список активных методов получения платежей:
+```python
+['QIWI', 'CARD', 'USDT', 'ETH', 'SBP', 'YOOMONEY']
+```
 
 ### balance
 
@@ -26,16 +34,31 @@ active_methods = await api.get_active_methods()
 balance = await api.balance()
 ```
 
-Возвращает баланс кассы.
+Возвращает баланс кассы:
+```python
+0
+```
 
 ### get_payments
 
 ```python
 payments = await api.get_payments(limit=24)
 ```
-
-Возвращает список платежей с указанным лимитом. Параметр `limit` задает лимит количества операций для выгрузки (по умолчанию 10).
-
+Возвращает список платежей с указанным лимитом. Параметр `limit` задает лимит количества операций для выгрузки (по умолчанию 10):
+```json
+[
+	{'amount': '100', 'created_at': '2024-01-28 22:59', 'expired_at': '2024-01-28 23:09', 'method': 'QIWI', 'session_id': 'pb1zeMvxSM8E', 'status': 'check', 'total_amount': '103.57'}, 
+	{'amount': '100', 'created_at': '2024-01-28 22:59', 'expired_at': '2024-01-28 23:09', 'method': 'QIWI', 'session_id': 'sin6MhigFskys', 'status': 'check', 'total_amount': '103.53'},
+	{'amount': '100', 'created_at': '2024-01-28 22:58', 'expired_at': '2024-01-28 23:08', 'method': 'QIWI', 'session_id': 'iCE3llJXso552', 'status': 'check', 'total_amount': '104.02'},
+	{'amount': '100', 'created_at': '2024-01-28 20:27', 'expired_at': '2024-01-29 20:37', 'method': 'QIWI', 'session_id': 'bjjdXvMqjKGwq', 'status': 'check', 'total_amount': '103.38'},
+	{'amount': '110', 'created_at': '2024-01-28 18:26', 'expired_at': '2024-01-29 18:36', 'method': 'QIWI', 'session_id': 'pY4oIt8SszQdXiC', 'status': 'check', 'total_amount': '113.78'},
+	{'amount': '110', 'created_at': '2024-01-28 18:25', 'expired_at': '2024-01-29 18:35', 'method': 'CARD', 'session_id': 'WQ7zLrWoY9eM', 'status': 'check', 'total_amount': '114.71'}, 
+	{'amount': '110', 'created_at': '2024-01-28 18:23', 'expired_at': '2024-01-29 18:33', 'method': 'CARD', 'session_id': 'UNOL30lFv8', 'status': 'check', 'total_amount': '115.70'}, 
+	{'amount': '1100', 'created_at': '2024-01-28 18:23', 'expired_at': '2024-01-29 18:33', 'method': 'card', 'session_id': 'IZZkh1YIXftJoG', 'status': 'check', 'total_amount': '1144.70'}, 
+	{'amount': '100', 'created_at': '2024-01-28 18:22', 'expired_at': '2024-01-29 18:32', 'method': 'CARD', 'session_id': 'x6huvpZ3Q6AW', 'status': 'check', 'total_amount': '104.59'}, 
+	{'amount': '1100', 'created_at': '2024-01-28 18:22', 'expired_at': '2024-01-29 18:32', 'method': 'card', 'session_id': '5vsTm46rmYqtYRZ', 'status': 'check', 'total_amount': '1144.71'}
+]
+```
 ### create_payoff
 
 ```python
@@ -83,7 +106,10 @@ payment = Payment(session_id: str, api_key: str)
 status = await payment.is_paid()
 ```
 
-Возвращает `bool`, в котором `False` означает, что инвойс не оплачен, а `True` - что оплачен.
+Возвращает `bool`, в котором `False` означает, что инвойс не оплачен, а `True` - что оплачен:
+```python
+True
+```
 
 ### full_info
 
@@ -110,7 +136,10 @@ info = await payment.full_info()
 ```python
 amount = await payment.get_amount()
 ```
-Возвращает сумму платежа.
+Возвращает сумму платежа:
+```python
+100
+```
 
 ## Переменные из этого класса
 
@@ -118,4 +147,7 @@ amount = await payment.get_amount()
 ```python
 pay_link = payment.link
 ```
-Вернет ссылку на платеж 
+Вернет ссылку на платеж:
+```python
+https://root-pay.app/iCE3llJXso552
+```
