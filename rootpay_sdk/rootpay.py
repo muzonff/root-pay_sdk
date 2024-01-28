@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx
 
 
@@ -8,13 +10,13 @@ class Payment:
         :param session_id: инициализация класса под конкретный платеж
         :param api_key: апи ключ рутпэй
         """
-        self.session_id = session_id
-        self.api_key = api_key
-        self.pay_data = {
-            'api_token': self.api_key,
-            'session_id': self.session_id
+        self.__session_id = session_id
+        self.__api_key = api_key
+        self.__pay_data = {
+            'api_token': self.__api_key,
+            'session_id': self.__session_id
         }
-        self.payment_url = "https://root-pay.app/api/get_payment_info"
+        self.__payment_url = "https://root-pay.app/api/get_payment_info"
         self.link = "https://root-pay.app/"+session_id
 
     async def is_paid(self) -> bool:
@@ -22,7 +24,7 @@ class Payment:
         :return: возвращает bool в котором False - инвойс не оплачен, True - оплачен
         """
         async with httpx.AsyncClient() as client:
-            result = await client.post(self.payment_url, data=self.pay_data)
+            result = await client.post(self.__payment_url, data=self.__pay_data)
         if result.status_code != 200:
             raise ConnectError(result.text)
         result = result.json()
@@ -40,6 +42,7 @@ class Payment:
 
     async def full_info(self) -> dict:
         """
+
         :return: полную информацию о платеже в формате:         {
             "amount": "1500",
             "created_at": "2023-02-28 19:36",
@@ -51,7 +54,7 @@ class Payment:
         }
         """
         async with httpx.AsyncClient() as client:
-            result = await client.post(self.payment_url, data=self.pay_data)
+            result = await client.post(self.__payment_url, data=self.__pay_data)
         if result.status_code != 200:
             raise ConnectError(result.text)
         result = result.json()
@@ -62,14 +65,14 @@ class Payment:
         elif len(result['payments']) == 0:
             raise Exception("Payment not exist")
         return result['payments'][0]
-        
+
     async def get_amount(self) -> float:
         """
 
         :return: возвращает сумму текущего инстанса платежа
         """
         async with httpx.AsyncClient() as client:
-            result = await client.post(self.payment_url, data=self.pay_data)
+            result = await client.post(self.__payment_url, data=self.__pay_data)
         if result.status_code != 200:
             raise ConnectError(result.text)
         result = result.json()
@@ -89,23 +92,23 @@ class RootPayApi:
 
         :param api_key: получает апи ключ для инициализации класса
         """
-        self.API_KEY = api_key
-        self.base_url = "https://root-pay.app/api/"
-        self.simple_data = {
-            'api_token': self.API_KEY
+        self.__API_KEY = api_key
+        self.__base_url = "https://root-pay.app/api/"
+        self.__simple_data = {
+            'api_token': self.__API_KEY
         }
-        self.methods = ['usdt', 'card', 'sbp', 'qiwi']
+        self.__methods = ['usdt', 'card', 'sbp', 'qiwi']
 
     async def get_active_methods(self) -> list:
         """
 
         :return: возвращает активные методы получения платежей
         """
-        method_url = self.base_url + "methods_pay"
+        method_url = self.__base_url + "methods_pay"
         answer = []
 
         async with httpx.AsyncClient() as client:
-            result = await client.post(method_url, data=self.simple_data)
+            result = await client.post(method_url, data=self.__simple_data)
         if result.status_code != 200:
             raise ConnectError(result.text)
         result = result.json()
@@ -122,10 +125,10 @@ class RootPayApi:
         """
         :return: возвращает баланс кассы
         """
-        method_url = self.base_url + "balance"
+        method_url = self.__base_url + "balance"
 
         async with httpx.AsyncClient() as client:
-            result = await client.post(method_url, data=self.simple_data)
+            result = await client.post(method_url, data=self.__simple_data)
         if result.status_code != 200:
             raise ConnectError(result.text)
         result = result.json()
@@ -141,8 +144,8 @@ class RootPayApi:
         :param limit: лимит количества операций для выгрузки (по умолчанию 10)
         :return: возвращает список платежей с указанным лимитом
         """
-        method_url = self.base_url + "get_payments"
-        temp = self.simple_data
+        method_url = self.__base_url + "get_payments"
+        temp = self.__simple_data
         if limit != 10 and limit > 0:
             temp['limit'] = limit
         async with httpx.AsyncClient() as client:
@@ -163,10 +166,10 @@ class RootPayApi:
         :param wallet: реквизиты кошелька получения
         :return: возвращает удачный или нет вывод. По непонятным мне обстоятельствам всегда True
         """
-        if method.lower() not in self.methods:
+        if method.lower() not in self.__methods:
             raise MetodError("Invalid method name")
-        method_url = self.base_url + "create_payoff"
-        temp = self.simple_data
+        method_url = self.__base_url + "create_payoff"
+        temp = self.__simple_data
         temp['method'] = method.lower()
         temp['wallet'] = wallet
 
@@ -190,16 +193,17 @@ class RootPayApi:
         :param method: метод оплаты (можно получить в функции get_active_methods)
         :param amount: целочисленная сумма оплаты
         :param subtitle: описание платежа, видит покупатель. Не обязательный параметр
-        :param comment: дополнительная информация, любая полезная вам нагрузка. Например: Telegram userid покупателя. Не обязательный параметр
+        :param comment: дополнительная информация, любая полезная вам нагрузка. Например: Telegram userid покупателя.
+        Не обязательный параметр
         :return: возвращает инстанс класса Payment
         """
 
         method = method.upper()
-        temp = self.simple_data
+        temp = self.__simple_data
         available = await self.get_active_methods()
         if method not in available:
             raise MetodError("Invalid method name")
-        method_url = self.base_url + "create_payment"
+        method_url = self.__base_url + "create_payment"
         temp['method'] = method
         temp['amount'] = amount
         if subtitle is not None:
@@ -213,7 +217,7 @@ class RootPayApi:
 
         if 'error' in result:
             raise PayCreateErr(result['error'])
-        return Payment(result['session_id'], self.API_KEY)
+        return Payment(result['session_id'], self.__API_KEY)
 
 
 class ChechPayExcept(Exception):
@@ -227,8 +231,10 @@ class AuthError(Exception):
 class MetodError(Exception):
     pass
 
+
 class PayCreateErr(Exception):
     pass
+
 
 class ConnectError(Exception):
     pass
