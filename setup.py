@@ -7,7 +7,7 @@ requirements = ["httpx>=0.26.0"]
 print(find_packages())
 setup(
     name="rootpay_sdk",
-    version="0.0.5",
+    version="1.0.0",
     author="Touka",
     author_email="touka.touka@icloud.com",
     description="A package to interact with root-pay.app API",
