@@ -1,5 +1,3 @@
-import asyncio
-
 import httpx
 
 
@@ -18,13 +16,14 @@ class Payment:
         }
         self.__payment_url = "https://root-pay.app/api/get_payment_info"
         self.link = "https://root-pay.app/"+session_id
+        self.__client = httpx.AsyncClient()
 
-    async def is_paid(self) -> bool:
+    async def __fetch_payment_info(self):
         """
-        :return: возвращает bool в котором False - инвойс не оплачен, True - оплачен
+        Сервисный класс для вэб запросов
+        :return: ответ апи
         """
-        async with httpx.AsyncClient() as client:
-            result = await client.post(self.__payment_url, data=self.__pay_data)
+        result = await self.__client.post(self.__payment_url, data=self.__pay_data)
         if result.status_code != 200:
             raise ConnectError(result.text)
         result = result.json()
@@ -35,14 +34,17 @@ class Payment:
         elif len(result['payments']) == 0:
             raise Exception("Payment not exist")
 
-        if result['payments'][0]['status'] == 'paid':
-            return True
+        return result['payments'][0]
 
-        return False
+    async def is_paid(self) -> bool:
+        """
+        :return: возвращает bool в котором False - инвойс не оплачен, True - оплачен
+        """
+        payment_info = await self.__fetch_payment_info()
+        return payment_info['status'] == 'paid'
 
     async def full_info(self) -> dict:
         """
-
         :return: полную информацию о платеже в формате:         {
             "amount": "1500",
             "created_at": "2023-02-28 19:36",
@@ -53,43 +55,19 @@ class Payment:
             "total_amount": "1506.12"
         }
         """
-        async with httpx.AsyncClient() as client:
-            result = await client.post(self.__payment_url, data=self.__pay_data)
-        if result.status_code != 200:
-            raise ConnectError(result.text)
-        result = result.json()
-
-        if 'error' in result:
-            raise ChechPayExcept(result['error'])
-
-        elif len(result['payments']) == 0:
-            raise Exception("Payment not exist")
-        return result['payments'][0]
+        return await self.__fetch_payment_info()
 
     async def get_amount(self) -> float:
         """
-
         :return: возвращает сумму текущего инстанса платежа
         """
-        async with httpx.AsyncClient() as client:
-            result = await client.post(self.__payment_url, data=self.__pay_data)
-        if result.status_code != 200:
-            raise ConnectError(result.text)
-        result = result.json()
-
-        if 'error' in result:
-            raise ChechPayExcept(result['error'])
-
-        elif len(result['payments']) == 0:
-            raise Exception("Payment not exist")
-
-        return result['payments'][0]['amount']
+        payment_info = await self.__fetch_payment_info()
+        return payment_info['amount']
 
 
 class RootPayApi:
     def __init__(self, api_key: str):
         """
-
         :param api_key: получает апи ключ для инициализации класса
         """
         self.__API_KEY = api_key
@@ -97,18 +75,15 @@ class RootPayApi:
         self.__simple_data = {
             'api_token': self.__API_KEY
         }
-        self.__methods = ['usdt', 'card', 'sbp', 'qiwi']
+        self.__methods = ['USDT', 'CARD', 'SBP', 'QIWI']
 
-    async def get_active_methods(self) -> list:
-        """
+    async def __request(self, endpoint: str, data: dict = None) -> dict:
 
-        :return: возвращает активные методы получения платежей
-        """
-        method_url = self.__base_url + "methods_pay"
-        answer = []
+        url = f"{self.__base_url}{endpoint}"
+        data = data or self.__simple_data
 
         async with httpx.AsyncClient() as client:
-            result = await client.post(method_url, data=self.__simple_data)
+            result = await client.post(url, data=data)
         if result.status_code != 200:
             raise ConnectError(result.text)
         result = result.json()
@@ -116,76 +91,48 @@ class RootPayApi:
         if 'error' in result:
             raise AuthError(result['error'])
 
-        for i in result["methods"]:
-            if i['enable']:
-                answer.append(i['name'])
-        return answer
+        return result
+
+    async def get_active_methods(self) -> list:
+        """
+        :return: возвращает активные методы получения платежей
+        """
+        result = await self.__request("methods_pay")
+        return [i['name'] for i in result["methods"] if i['enable']]
 
     async def balance(self) -> float:
         """
         :return: возвращает баланс кассы
         """
-        method_url = self.__base_url + "balance"
-
-        async with httpx.AsyncClient() as client:
-            result = await client.post(method_url, data=self.__simple_data)
-        if result.status_code != 200:
-            raise ConnectError(result.text)
-        result = result.json()
-
-        if 'error' in result:
-            raise AuthError(result['error'])
-
+        result = await self.__request("balance")
         return result['balance']
 
     async def get_payments(self, limit: int = 10) -> list:
         """
-
         :param limit: лимит количества операций для выгрузки (по умолчанию 10)
         :return: возвращает список платежей с указанным лимитом
         """
-        method_url = self.__base_url + "get_payments"
-        temp = self.__simple_data
-        if limit != 10 and limit > 0:
-            temp['limit'] = limit
-        async with httpx.AsyncClient() as client:
-            result = await client.post(method_url, data=temp)
-        if result.status_code != 200:
-            raise ConnectError(result.text)
-        result = result.json()
-
-        if 'error' in result:
-            raise AuthError(result['error'])
-
+        data = self.__simple_data.copy()
+        if limit > 0 or limit != 10:
+            data.update({'limit': limit})
+        result = await self.__request("get_payments", data)
         return result['payments']
 
-    '''Почему-то всегда True'''
+    '''Почему то всегда True'''
     async def create_payoff(self, method: str, wallet: str) -> bool:
         """
         :param method: платежная система кошелька вывода: usdt, card, sbp, qiwi
         :param wallet: реквизиты кошелька получения
         :return: возвращает удачный или нет вывод. По непонятным мне обстоятельствам всегда True
         """
-        if method.lower() not in self.__methods:
+        if method.upper() not in self.__methods:
             raise MetodError("Invalid method name")
-        method_url = self.__base_url + "create_payoff"
-        temp = self.__simple_data
-        temp['method'] = method.lower()
-        temp['wallet'] = wallet
-
-        async with httpx.AsyncClient() as client:
-            result = await client.post(method_url, data=temp)
-        if result.status_code != 200:
-            raise ConnectError(result.text)
-        result = result.json()
-
-        if 'error' in result:
-            raise AuthError(result['error'])
-
+        data = self.__simple_data.copy()
+        data.update({'method': method.upper(), 'wallet': wallet})
+        result = await self.__request("create_payoff", data)
         return result['status']
 
-    async def create_pay_link(self,
-                              method: str,
+    async def create_pay_link(self, method: str,
                               amount: int,
                               subtitle: str = None,
                               comment: str = None) -> Payment:
@@ -197,26 +144,17 @@ class RootPayApi:
         Не обязательный параметр
         :return: возвращает инстанс класса Payment
         """
-
         method = method.upper()
-        temp = self.__simple_data
         available = await self.get_active_methods()
         if method not in available:
             raise MetodError("Invalid method name")
-        method_url = self.__base_url + "create_payment"
-        temp['method'] = method
-        temp['amount'] = amount
+        data = self.__simple_data.copy()
+        data.update({'method': method, 'amount': amount})
         if subtitle is not None:
-            temp['subtitle'] = subtitle
+            data.update({'subtitle': subtitle})
         if comment is not None:
-            temp['comment'] = comment
-
-        async with httpx.AsyncClient() as client:
-            result = await client.post(method_url, data=temp)
-        result = result.json()
-
-        if 'error' in result:
-            raise PayCreateErr(result['error'])
+            data.update({'comment': comment})
+        result = await self.__request("create_payment", data)
         return Payment(result['session_id'], self.__API_KEY)
 
 
@@ -238,3 +176,4 @@ class PayCreateErr(Exception):
 
 class ConnectError(Exception):
     pass
+    
